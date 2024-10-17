@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.29)
 project(windowsPipe)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
@@ -27,6 +27,15 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         Qt${QT_VERSION}::Network
         CwAPI3D::CwAPI3D
 )
+
+add_compile_definitions(${PROJECT_NAME} PRIVATE
+        /W4
+        /WX
+        /wd4251
+        /experimental:module
+        /std:c++latest
+)
+
 
 target_include_directories(${PROJECT_NAME} PRIVATE include)
 target_include_directories(${PROJECT_NAME} PUBLIC ${PROJECT_BINARY_DIR})

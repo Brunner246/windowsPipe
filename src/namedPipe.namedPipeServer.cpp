@@ -2,9 +2,8 @@
 // Created by MichaelBrunner on 16/10/2024.
 //
 
-#include "windowsPipe.namedPipeServer.h"
+#include "namedPipe.namedPipeServer.h"
 #include <QJsonObject>
-#include <ranges>
 
 #include <QThread>
 #include <QLocalSocket>
@@ -12,27 +11,38 @@
 
 namespace pipe
 {
-NamedPipeServer::NamedPipeServer(CwAPI3D::UtilityController *utilityController, QObject *parent)
+NamedPipeServer::NamedPipeServer(CwAPI3D::UtilityController *utilityController,
+                                 const Identifier &pipeIdentifier,
+                                 QObject *parent)
     : QObject(parent)
       , mUtilityController(utilityController)
+      , mPipeIdentifier(pipeIdentifier)
 {
     if (!mUtilityController) {
         throw std::runtime_error("UtilityController is nullptr");
     }
 }
+NamedPipeServer::~NamedPipeServer()
+{
+    qDebug() << "NamedPipeServer destructor";
+}
 
 void NamedPipeServer::start()
 {
     server = new QLocalServer(this);
-    QLocalServer::removeServer("CadworkPipe");
+    QLocalServer::removeServer(mPipeIdentifier.getIdentifier().c_str());
 
-    if (!server->listen("CadworkPipe")) {
+    if (!server->listen(mPipeIdentifier.getIdentifier().c_str())) {
         qCritical() << "Unable to start server:" << server->errorString();
         return;
     }
 
+    const auto formattedOutput = std::format("Server is listening on '{}' in thread: {}",
+                                             mPipeIdentifier.getIdentifier().c_str(),
+                                             QThread::currentThread()->objectName().toStdString());
+    qDebug() << formattedOutput.c_str();
+
     std::ignore = connect(server, &QLocalServer::newConnection, this, &NamedPipeServer::onNewConnection);
-    qDebug() << "Server is listening on 'CadworkPipe' in thread:" << QThread::currentThread();
 }
 
 void NamedPipeServer::onNewConnection()
@@ -54,7 +64,11 @@ void NamedPipeServer::onReadyRead() const
 
     QJsonObject replyObject;
     replyObject["message"] = "Hello from server!";
-    replyObject["projectData"] = mUtilityController->getProjectData(L"PIPE")->narrowData();
+
+    const auto projectDataStr = mUtilityController->getProjectData(L"PIPE")->narrowData();
+    const QJsonDocument projectDataDoc = QJsonDocument::fromJson(projectDataStr);
+    replyObject["projectData"] = projectDataDoc.object();
+
     replyObject["fileName"] = mUtilityController->get3DFileName()->narrowData();
 
     const QJsonDocument replyDoc(replyObject);
