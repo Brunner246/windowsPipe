@@ -24,15 +24,16 @@ NamedPipeServer::NamedPipeServer(CwAPI3D::UtilityController *utilityController, 
 void NamedPipeServer::start()
 {
     server = new QLocalServer(this);
-    QLocalServer::removeServer("CadworkPipe");
+    const auto pipeName = mUtilityController->get3DFileName()->narrowData();
+    QLocalServer::removeServer(pipeName);
 
-    if (!server->listen("CadworkPipe")) {
+    if (!server->listen(pipeName)) {
         qCritical() << "Unable to start server:" << server->errorString();
         return;
     }
 
     std::ignore = connect(server, &QLocalServer::newConnection, this, &NamedPipeServer::onNewConnection);
-    qDebug() << "Server is listening on 'CadworkPipe' in thread:" << QThread::currentThread();
+    qDebug() << "Server is listening on " << pipeName << " 'CadworkPipe' in thread:" << QThread::currentThread();
 }
 
 void NamedPipeServer::onNewConnection()
